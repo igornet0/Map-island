@@ -2,139 +2,147 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_SIZE 8
+#define MAX_N 8
+#define MAX_BLOCKS 100
+#define INPUT_FILE "C:\\Users\\User\\Desktop\\Map-island\\input.in"
+#define OUTPUT_FILE "C:\\Users\\User\\Desktop\\Map-island\\output.c"
 
-// Глобальные переменные
-int N;
-int horizontal[MAX_SIZE][MAX_SIZE]; // Коды горизонталей
-int vertical[MAX_SIZE][MAX_SIZE];   // Коды вертикалей
-int grid[MAX_SIZE][MAX_SIZE];       // Текущая карта
-int solutions_found = 0;
+typedef struct {
+    int n;
+    int horizontal[MAX_N][MAX_N];
+    int vertical[MAX_N][MAX_N];
+    int h_size[MAX_N];
+    int v_size[MAX_N];
+} ProblemBlock;
 
-// Функция для проверки строки на соответствие коду
-int validate_row(int row, int *code) {
-    int count = 0, index = 0, group_size = 0;
-    for (int i = 0; i < N; i++) {
-        if (grid[row][i] == 1) {
-            group_size++;
-        } else if (group_size > 0) {
-            if (index >= MAX_SIZE || code[index++] != group_size) return 0;
-            group_size = 0;
+// Функция для считывания данных
+int readInput(ProblemBlock *blocks, int *block_count) {
+    FILE *input = fopen(INPUT_FILE, "r");
+    if (!input) {
+        printf("Error opening input file.\n");
+        return 0;
+    }
+
+    int count = 0;
+    while (fscanf(input, "%d", &blocks[count].n) == 1) {
+        int n = blocks[count].n;
+
+        // Считываем горизонтальные данные
+        for (int i = 0; i < n; i++) {
+            blocks[count].h_size[i] = 0;
+            int value;
+            while (fscanf(input, "%d", &value) && value != 0) {
+                blocks[count].horizontal[i][blocks[count].h_size[i]++] = value;
+            }
         }
+
+        // Считываем вертикальные данные
+        for (int i = 0; i < n; i++) {
+            blocks[count].v_size[i] = 0;
+            int value;
+            while (fscanf(input, "%d", &value) && value != 0) {
+                blocks[count].vertical[i][blocks[count].v_size[i]++] = value;
+            }
+        }
+
+        count++;
     }
-    if (group_size > 0) {
-        if (index >= MAX_SIZE || code[index++] != group_size) return 0;
-    }
-    return code[index] == 0;
+
+    fclose(input);
+    *block_count = count;
+    return 1;
 }
 
-// Функция для проверки столбца на соответствие коду
-int validate_column(int col, int *code) {
-    int count = 0, index = 0, group_size = 0;
-    for (int i = 0; i < N; i++) {
-        if (grid[i][col] == 1) {
-            group_size++;
-        } else if (group_size > 0) {
-            if (index >= MAX_SIZE || code[index++] != group_size) return 0;
-            group_size = 0;
+// Проверка соответствия строки
+int checkRow(int *row, int *pattern, int size, int n) {
+    int i = 0, count = 0, index = 0;
+    while (i < n) {
+        if (row[i] == 1) {
+            count++;
+        } else if (count > 0) {
+            if (index >= size || pattern[index++] != count) return 0;
+            count = 0;
         }
+        i++;
     }
-    if (group_size > 0) {
-        if (index >= MAX_SIZE || code[index++] != group_size) return 0;
+    if (count > 0) {
+        if (index >= size || pattern[index++] != count) return 0;
     }
-    return code[index] == 0;
+    return index == size;
 }
 
-// Функция проверки текущей карты
-int validate_grid() {
-    for (int i = 0; i < N; i++) {
-        if (!validate_row(i, horizontal[i]) || !validate_column(i, vertical[i])) {
-            return 0;
+// Рекурсивное восстановление карты
+void solve(int n, int grid[MAX_N][MAX_N], int row, int col, ProblemBlock *block, int *found) {
+    if (row == n) {
+        for (int i = 0; i < n; i++) {
+            int temp[MAX_N];
+            for (int j = 0; j < n; j++) temp[j] = grid[j][i];
+            if (!checkRow(temp, block->vertical[i], block->v_size[i], n)) return;
         }
+        *found = 1;
+        return;
+    }
+
+    if (col == n) {
+        int temp[MAX_N];
+        for (int i = 0; i < n; i++) temp[i] = grid[row][i];
+        if (!checkRow(temp, block->horizontal[row], block->h_size[row], n)) return;
+        solve(n, grid, row + 1, 0, block, found);
+        return;
+    }
+
+    grid[row][col] = 0;
+    solve(n, grid, row, col + 1, block, found);
+    if (*found) return;
+
+    grid[row][col] = 1;
+    solve(n, grid, row, col + 1, block, found);
+}
+
+// Восстановление карты
+int restoreMap(ProblemBlock *block, FILE *output) {
+    int grid[MAX_N][MAX_N] = {0};
+    int found = 0;
+
+    solve(block->n, grid, 0, 0, block, &found);
+
+    if (!found) {
+        fprintf(output, "no map\n");
+        return 0;
+    }
+
+    for (int i = 0; i < block->n; i++) {
+        for (int j = 0; j < block->n; j++) {
+            fprintf(output, "%s", grid[i][j] ? "* " : "  ");
+        }
+        fprintf(output, "\n");
     }
     return 1;
 }
 
-// Рекурсивная функция для восстановления карты
-void backtrack(int row, int col) {
-    if (row == N) {
-        if (validate_grid()) {
-            solutions_found++;
-            printf("Solution %d:\n", solutions_found);
-            for (int i = 0; i < N; i++) {
-                for (int j = 0; j < N; j++) {
-                    printf("%s", grid[i][j] ? "* " : "  ");
-                }
-                printf("\n");
-            }
-            printf("\n");
-        }
-        return;
-    }
-
-    int next_row = (col == N - 1) ? row + 1 : row;
-    int next_col = (col == N - 1) ? 0 : col + 1;
-
-    // Попробовать оставить пустым
-    grid[row][col] = 0;
-    backtrack(next_row, next_col);
-
-    // Попробовать поместить остров
-    grid[row][col] = 1;
-    if (validate_row(row, horizontal[row]) && validate_column(col, vertical[col])) {
-        backtrack(next_row, next_col);
-    }
-
-    // Вернуть состояние
-    grid[row][col] = 0;
-}
-
+// Главная функция
 int main() {
-    FILE *input = fopen("C:\\Users\\User\\Desktop\\Map-island\\input.in", "r");
-    FILE *output = fopen("C:\\Users\\User\\Desktop\\Map-island\\output.c", "w");
+    ProblemBlock blocks[MAX_BLOCKS];
+    int block_count;
 
-    if (!input || !output) {
-        printf("Error opening file.\n");
+    if (!readInput(blocks, &block_count)) {
         return 1;
     }
 
-    while (fscanf(input, "%d", &N) == 1) {
-        if (N < 1 || N > MAX_SIZE) {
-            fprintf(output, "Invalid grid size.\nnext problem\n");
-            continue;
-        }
-
-        // Считать горизонтальные коды
-        memset(horizontal, 0, sizeof(horizontal));
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < MAX_SIZE; j++) {
-                fscanf(input, "%d", &horizontal[i][j]);
-                if (horizontal[i][j] == 0) break;
-            }
-        }
-
-        // Считать вертикальные коды
-        memset(vertical, 0, sizeof(vertical));
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < MAX_SIZE; j++) {
-                fscanf(input, "%d", &vertical[i][j]);
-                if (vertical[i][j] == 0) break;
-            }
-        }
-
-        // Инициализация сетки и поиск решений
-        memset(grid, 0, sizeof(grid));
-        solutions_found = 0;
-        backtrack(0, 0);
-
-        if (solutions_found == 0) {
-            fprintf(output, "no map\n");
-        }
-
-        fprintf(output, "next problem\n");
+    FILE *output = fopen(OUTPUT_FILE, "w");
+    if (!output) {
+        printf("Error opening output file.\n");
+        return 1;
     }
 
-    fclose(input);
+    for (int i = 0; i < block_count; i++) {
+        if (i > 0) fprintf(output, "next problem\n");
+        if (!restoreMap(&blocks[i], output)) {
+            fprintf(output, "\n");
+        }
+    }
+
     fclose(output);
+    printf("Saved to %s\n", OUTPUT_FILE);
     return 0;
 }

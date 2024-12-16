@@ -360,8 +360,8 @@ int main() {
   
   int * solution_exist;
   
-  f1 = fopen("C://Users//bagir//OneDrive//Рабочий стол//input4.txt", "r");
-  f2 = fopen("C://Users//bagir//OneDrive//Рабочий стол//output4.txt", "w");
+  f1 = fopen("C:\\Users\\User\\Desktop\\Map-island\\input.in", "r");
+  f2 = fopen("C:\\Users\\User\\Desktop\\Map-island\\output.c", "w");
 
 
   while (!(feof(f1))) {
