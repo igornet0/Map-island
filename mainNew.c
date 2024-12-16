@@ -19,7 +19,7 @@ typedef struct {
 int readInput(ProblemBlock *blocks, int *block_count) {
     FILE *input = fopen(INPUT_FILE, "r");
     if (!input) {
-        printf("Error opening input file.\n");
+        printf("Ошибка открытия входного файла.\n");
         return 0;
     }
 
@@ -72,14 +72,21 @@ int checkRow(int *row, int *pattern, int size, int n) {
 }
 
 // Рекурсивное восстановление карты
-void solve(int n, int grid[MAX_N][MAX_N], int row, int col, ProblemBlock *block, int *found) {
+void solve(int n, int grid[MAX_N][MAX_N], int row, int col, ProblemBlock *block, int solutions[MAX_N * MAX_N][MAX_N][MAX_N], int *solution_count) {
     if (row == n) {
         for (int i = 0; i < n; i++) {
             int temp[MAX_N];
             for (int j = 0; j < n; j++) temp[j] = grid[j][i];
             if (!checkRow(temp, block->vertical[i], block->v_size[i], n)) return;
         }
-        *found = 1;
+
+        // Сохраняем найденное решение
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                solutions[*solution_count][i][j] = grid[i][j];
+            }
+        }
+        (*solution_count)++;
         return;
     }
 
@@ -87,37 +94,40 @@ void solve(int n, int grid[MAX_N][MAX_N], int row, int col, ProblemBlock *block,
         int temp[MAX_N];
         for (int i = 0; i < n; i++) temp[i] = grid[row][i];
         if (!checkRow(temp, block->horizontal[row], block->h_size[row], n)) return;
-        solve(n, grid, row + 1, 0, block, found);
+        solve(n, grid, row + 1, 0, block, solutions, solution_count);
         return;
     }
 
     grid[row][col] = 0;
-    solve(n, grid, row, col + 1, block, found);
-    if (*found) return;
+    solve(n, grid, row, col + 1, block, solutions, solution_count);
 
     grid[row][col] = 1;
-    solve(n, grid, row, col + 1, block, found);
+    solve(n, grid, row, col + 1, block, solutions, solution_count);
 }
 
 // Восстановление карты
 int restoreMap(ProblemBlock *block, FILE *output) {
     int grid[MAX_N][MAX_N] = {0};
-    int found = 0;
+    int solutions[MAX_N * MAX_N][MAX_N][MAX_N] = {0};
+    int solution_count = 0;
 
-    solve(block->n, grid, 0, 0, block, &found);
+    solve(block->n, grid, 0, 0, block, solutions, &solution_count);
 
-    if (!found) {
+    if (solution_count == 0) {
         fprintf(output, "no map\n");
         return 0;
     }
 
-    for (int i = 0; i < block->n; i++) {
-        for (int j = 0; j < block->n; j++) {
-            fprintf(output, "%s", grid[i][j] ? "* " : "  ");
+    for (int k = 0; k < solution_count; k++) {
+        if (k > 0) fprintf(output, "\n"); // Разделяем карты пустой строкой
+        for (int i = 0; i < block->n; i++) {
+            for (int j = 0; j < block->n; j++) {
+                fprintf(output, "%s", solutions[k][i][j] ? "* " : "  ");
+            }
+            fprintf(output, "\n");
         }
-        fprintf(output, "\n");
     }
-    return 1;
+    return solution_count;
 }
 
 // Главная функция
@@ -131,10 +141,9 @@ int main() {
 
     FILE *output = fopen(OUTPUT_FILE, "w");
     if (!output) {
-        printf("Error opening output file.\n");
+        printf("Ошибка открытия выходного файла.\n");
         return 1;
     }
-
     for (int i = 0; i < block_count; i++) {
         if (i > 0) fprintf(output, "next problem\n");
         if (!restoreMap(&blocks[i], output)) {
@@ -143,6 +152,6 @@ int main() {
     }
 
     fclose(output);
-    printf("Saved to %s\n", OUTPUT_FILE);
+    printf("Результаты сохранены в %s\n", OUTPUT_FILE);
     return 0;
 }
