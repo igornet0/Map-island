@@ -19,7 +19,7 @@ typedef struct {
 int readInput(ProblemBlock *blocks, int *block_count) {
     FILE *input = fopen(INPUT_FILE, "r");
     if (!input) {
-        printf("Ошибка открытия входного файла.\n");
+        printf("Erorr opening input file.\n");
         return 0;
     }
 
@@ -141,7 +141,7 @@ int main() {
 
     FILE *output = fopen(OUTPUT_FILE, "w");
     if (!output) {
-        printf("Ошибка открытия выходного файла.\n");
+        printf("Error opening output file.\n");
         return 1;
     }
     for (int i = 0; i < block_count; i++) {
@@ -152,6 +152,6 @@ int main() {
     }
 
     fclose(output);
-    printf("Результаты сохранены в %s\n", OUTPUT_FILE);
+    printf("Output saved to %s\n", OUTPUT_FILE);
     return 0;
 }
